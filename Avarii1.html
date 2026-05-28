@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Промбезопасность: кейс К-202</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #eef2f8;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        .page {
+            max-width: 560px;
+            width: 100%;
+            background: white;
+            border-radius: 1.5rem;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+        }
+        .badge {
+            background: #1e2a3e;
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.2rem 0.8rem;
+            border-radius: 40px;
+            display: inline-block;
+            margin-bottom: 0.8rem;
+        }
+        .event-text {
+            background: #f8fafc;
+            padding: 1rem;
+            border-left: 4px solid #ffb347;
+            border-radius: 1rem;
+            margin: 0.75rem 0;
+            font-size: 0.95rem;
+        }
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+            flex-wrap: wrap;
+        }
+        .btn {
+            border: none;
+            padding: 0.5rem 1.3rem;
+            border-radius: 2rem;
+            font-weight: 500;
+            font-size: 0.9rem;
+            cursor: pointer;
+            font-family: inherit;
+            transition: 0.2s;
+        }
+        .btn-primary {
+            background: #1e466e;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #0f3554;
+        }
+        .btn-outline {
+            background: white;
+            border: 1px solid #cbd5e1;
+        }
+        .btn-outline:hover {
+            background: #f1f5f9;
+        }
+        .answer-feedback {
+            margin-top: 1rem;
+            padding: 0.8rem;
+            border-radius: 0.8rem;
+            font-size: 0.9rem;
+        }
+        .correct {
+            background: #e8f5e9;
+            border-left: 4px solid #2e7d32;
+        }
+        .incorrect {
+            background: #ffebee;
+            border-left: 4px solid #c62828;
+        }
+        .nav-link {
+            display: inline-block;
+            margin-top: 1.5rem;
+            text-align: center;
+            width: 100%;
+            text-decoration: none;
+            color: #1e466e;
+            font-weight: 500;
+        }
+        hr {
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+    <div class="badge">РЕАЛЬНАЯ ПРАКТИКА</div>
+    <h3 style="margin-bottom: 0.25rem;">⚙️ Колонна К-202</h3>
+    <div class="event-text">
+        📍 <strong>Событие:</strong> В колонне К-202 (высота 45 м) на 10 секунд подскочило давление выше расчётного на 30%, после чего сработал разрывной диск (разрушился с выбросом газа). Давление упало. Никто не пострадал. Диск – специально ослабленный элемент защиты. Повторный пуск через 2 часа.
+    </div>
+    <p style="font-weight: 600; margin: 0.5rem 0 0.2rem;">❓ Является ли это событие <strong style="color:#c0392b;">аварией</strong>?</p>
+    <div class="btn-group" id="quizBtns">
+        <button class="btn btn-outline" data-ans="yes">✅ Да, авария</button>
+        <button class="btn btn-primary" data-ans="no">❌ Нет, инцидент</button>
+    </div>
+    <div id="quizFeedback" class="answer-feedback" style="display: none;"></div>
+
+    <hr>
+    <a href="page2.html" class="nav-link">➡️ Перейти к интерактивному заданию «Шкала риска»</a>
+</div>
+
+<script>
+    const quizDiv = document.getElementById('quizFeedback');
+    document.querySelectorAll('#quizBtns .btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const isAccident = btn.getAttribute('data-ans') === 'yes';
+            quizDiv.style.display = 'block';
+            if (!isAccident) {
+                quizDiv.className = 'answer-feedback correct';
+                quizDiv.innerHTML = '✅ Верно! Это ИНЦИДЕНТ. Разрывной диск сработал штатно (ПАЗ), колонна не разрушена. Если бы диск не сработал и разорвало колонну — это была бы авария.';
+            } else {
+                quizDiv.className = 'answer-feedback incorrect';
+                quizDiv.innerHTML = '❌ Нет, это не авария. Разрывной диск — элемент защиты, его разрушение предотвратило аварию. Событие классифицируется как инцидент.';
+            }
+        });
+    });
+</script>
+</body>
+</html>

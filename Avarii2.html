@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Промбезопасность: шкала риска</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #eef2f8;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        .page {
+            max-width: 560px;
+            width: 100%;
+            background: white;
+            border-radius: 1.5rem;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+        }
+        .badge {
+            background: #1e2a3e;
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.2rem 0.8rem;
+            border-radius: 40px;
+            display: inline-block;
+            margin-bottom: 0.8rem;
+        }
+        .two-columns {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+            flex-wrap: wrap;
+        }
+        .events-column, .scale-column {
+            flex: 1 1 0;
+            min-width: 180px;
+        }
+        .section-title {
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+            color: #1e466e;
+        }
+        .events-list {
+            background: #f9fafc;
+            border-radius: 1rem;
+            padding: 0.7rem;
+            min-height: 320px;
+            border: 1px solid #eef2f8;
+        }
+        .event-card {
+            background: white;
+            border: 1px solid #e2edf2;
+            border-radius: 0.8rem;
+            padding: 0.6rem 0.8rem;
+            margin-bottom: 0.6rem;
+            cursor: grab;
+            user-select: none;
+            font-weight: 500;
+            font-size: 0.85rem;
+        }
+        .event-card:active { cursor: grabbing; }
+        .event-card.dragging { opacity: 0.4; }
+        .risk-scale {
+            background: linear-gradient(180deg, #dcfce7 0%, #fee2e2 100%);
+            border-radius: 1.2rem;
+            padding: 0.8rem;
+            border: 1px solid #d1dbe8;
+        }
+        .scale-header, .scale-footer {
+            text-align: center;
+            font-weight: 700;
+            font-size: 0.75rem;
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(2px);
+            padding: 0.3rem;
+            border-radius: 2rem;
+            margin: 0.3rem 0;
+        }
+        .slots-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.7rem;
+            margin: 0.5rem 0;
+        }
+        .slot {
+            background: rgba(255, 248, 225, 0.7);
+            border: 2px dashed #c2a15b;
+            border-radius: 1rem;
+            min-height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.2rem;
+        }
+        .slot.drag-over {
+            background: rgba(255, 235, 190, 0.9);
+            border-color: #f7b05e;
+        }
+        .slot .event-card {
+            width: 100%;
+            margin: 0;
+            text-align: center;
+        }
+        .empty-slot-placeholder {
+            color: #b89a6e;
+            font-size: 0.75rem;
+            font-style: italic;
+        }
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        .btn {
+            border: none;
+            padding: 0.4rem 1.2rem;
+            border-radius: 2rem;
+            font-weight: 500;
+            font-size: 0.85rem;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .btn-primary {
+            background: #1e466e;
+            color: white;
+        }
+        .btn-outline {
+            background: white;
+            border: 1px solid #cbd5e1;
+        }
+        .order-feedback {
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            padding: 0.7rem;
+            border-radius: 0.8rem;
+            background: #f1f5f9;
+            text-align: center;
+        }
+        .nav-link {
+            display: inline-block;
+            margin-top: 1rem;
+            text-align: center;
+            width: 100%;
+            text-decoration: none;
+            color: #1e466e;
+            font-weight: 500;
+        }
+        hr {
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+    <div class="badge">🧩 ИНТЕРАКТИВНЫЙ ТРЕНАЖЁР</div>
+    <h3>📊 Распределите события по шкале риска</h3>
+    <p style="font-size: 0.8rem; margin-bottom: 0.5rem;">Перетащите карточки в слоты. Можно менять местами. Правильный порядок: сверху (менее опасно) → вниз (более опасно).</p>
+
+    <div class="two-columns">
+        <div class="events-column">
+            <div class="section-title">📋 Варианты событий</div>
+            <div id="eventsContainer" class="events-list"></div>
+        </div>
+        <div class="scale-column">
+            <div class="section-title">🎯 Шкала риска</div>
+            <div class="risk-scale">
+                <div class="scale-header">🟢 ИНЦИДЕНТЫ (менее серьёзно)</div>
+                <div id="slotsContainer" class="slots-container">
+                    <div class="slot" data-position="1"></div>
+                    <div class="slot" data-position="2"></div>
+                    <div class="slot" data-position="3"></div>
+                    <div class="slot" data-position="4"></div>
+                </div>
+                <div class="scale-footer">🔴 АВАРИЯ (более серьёзно)</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="action-buttons">
+        <button id="checkOrderBtn" class="btn btn-primary">📌 Проверить порядок</button>
+        <button id="resetAllBtn" class="btn btn-outline">⟳ Сбросить всё</button>
+    </div>
+    <div id="scaleFeedback" class="order-feedback" style="display: none;"></div>
+
+    <hr>
+    <a href="page1.html" class="nav-link">⬅️ Вернуться к кейсу К-202</a>
+</div>
+
+<script>
+    const eventsData = [
+        { id: "asu", text: "Отказ АСУ ТП (перезагрузка компьютера)" },
+        { id: "ppk", text: "Срабатывание ППК (предохранительный клапан)" },
+        { id: "disk", text: "Разрыв диска (мембраны)" },
+        { id: "vessel", text: "Разрыв корпуса аппарата" }
+    ];
+    const correctOrderFromTop = ["asu", "ppk", "disk", "vessel"];
+
+    const eventsContainer = document.getElementById("eventsContainer");
+    const slotsContainer = document.getElementById("slotsContainer");
+    const checkBtn = document.getElementById("checkOrderBtn");
+    const resetBtn = document.getElementById("resetAllBtn");
+    const scaleFeedbackDiv = document.getElementById("scaleFeedback");
+
+    let dragSourceCard = null;
+
+    function shuffleArray(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    function createEventCard(eventItem) {
+        const card = document.createElement("div");
+        card.className = "event-card";
+        card.setAttribute("data-id", eventItem.id);
+        card.setAttribute("draggable", "true");
+        card.textContent = eventItem.text;
+        card.addEventListener("dragstart", handleDragStart);
+        card.addEventListener("dragend", handleDragEnd);
+        return card;
+    }
+
+    function renderEventsList(eventsArray) {
+        eventsContainer.innerHTML = "";
+        eventsArray.forEach(event => eventsContainer.appendChild(createEventCard(event)));
+    }
+
+    function getCurrentOrderFromSlots() {
+        const slots = document.querySelectorAll("#slotsContainer .slot");
+        const order = [];
+        slots.forEach(slot => {
+            const card = slot.querySelector(".event-card");
+            order.push(card ? card.getAttribute("data-id") : null);
+        });
+        return order;
+    }
+
+    function allSlotsFilled() {
+        const slots = document.querySelectorAll("#slotsContainer .slot");
+        for (let slot of slots) if (!slot.querySelector(".event-card")) return false;
+        return true;
+    }
+
+    function validateAndShowFeedback() {
+        if (!allSlotsFilled()) {
+            scaleFeedbackDiv.style.display = "block";
+            scaleFeedbackDiv.innerHTML = "⚠️ Шкала заполнена не полностью. Разместите все 4 карточки.";
+            scaleFeedbackDiv.style.background = "#fff2e0";
+            return;
+        }
+        const currentOrder = getCurrentOrderFromSlots();
+        let isCorrect = true;
+        for (let i = 0; i < correctOrderFromTop.length; i++) {
+            if (currentOrder[i] !== correctOrderFromTop[i]) { isCorrect = false; break; }
+        }
+        scaleFeedbackDiv.style.display = "block";
+        if (isCorrect) {
+            scaleFeedbackDiv.innerHTML = "✅ Абсолютно верно! Порядок правильный: отказ АСУ → ППК → разрыв диска → разрыв корпуса (авария).";
+            scaleFeedbackDiv.style.background = "#e0f2e9";
+            scaleFeedbackDiv.style.borderLeft = "4px solid #2e7d32";
+        } else {
+            scaleFeedbackDiv.innerHTML = "❌ Неверный порядок. Правильная последовательность (сверху вниз):<br>1️⃣ Отказ АСУ ТП<br>2️⃣ Срабатывание ППК<br>3️⃣ Разрыв диска<br>4️⃣ Разрыв корпуса аппарата";
+            scaleFeedbackDiv.style.background = "#ffebee";
+            scaleFeedbackDiv.style.borderLeft = "4px solid #c62828";
+        }
+    }
+
+    function moveCardToSlot(sourceCard, targetSlot) {
+        if (!sourceCard || !targetSlot) return;
+        const existingCard = targetSlot.querySelector(".event-card");
+        const sourceIsInSlot = sourceCard.parentNode !== eventsContainer && sourceCard.parentNode.classList?.contains("slot");
+        if (!existingCard) {
+            targetSlot.appendChild(sourceCard);
+        } else {
+            if (sourceIsInSlot) {
+                const sourceSlot = sourceCard.parentNode;
+                sourceSlot.appendChild(existingCard);
+            } else {
+                eventsContainer.appendChild(existingCard);
+            }
+            targetSlot.appendChild(sourceCard);
+        }
+        scaleFeedbackDiv.style.display = "none";
+    }
+
+    function handleDragStart(e) {
+        dragSourceCard = this;
+        e.dataTransfer.setData("text/plain", this.getAttribute("data-id"));
+        this.classList.add("dragging");
+        e.dataTransfer.effectAllowed = "move";
+    }
+    function handleDragEnd(e) {
+        if (dragSourceCard) dragSourceCard.classList.remove("dragging");
+        dragSourceCard = null;
+        document.querySelectorAll(".slot").forEach(slot => slot.classList.remove("drag-over"));
+    }
+
+    function setupSlotsDropTargets() {
+        const slots = document.querySelectorAll("#slotsContainer .slot");
+        slots.forEach(slot => {
+            const newSlot = slot.cloneNode(true);
+            slot.parentNode.replaceChild(newSlot, slot);
+        });
+        document.querySelectorAll("#slotsContainer .slot").forEach(slot => {
+            slot.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; slot.classList.add("drag-over"); });
+            slot.addEventListener("dragleave", () => slot.classList.remove("drag-over"));
+            slot.addEventListener("drop", e => {
+                e.preventDefault();
+                slot.classList.remove("drag-over");
+                if (!dragSourceCard || dragSourceCard.parentNode === slot) return;
+                moveCardToSlot(dragSourceCard, slot);
+            });
+        });
+    }
+
+    function setupEventsContainerDrop() {
+        const container = eventsContainer;
+        const newContainer = container.cloneNode(true);
+        container.parentNode.replaceChild(newContainer, container);
+        const freshContainer = document.getElementById("eventsContainer");
+        freshContainer.addEventListener("dragover", e => e.preventDefault());
+        freshContainer.addEventListener("drop", e => {
+            e.preventDefault();
+            if (!dragSourceCard || dragSourceCard.parentNode === freshContainer) return;
+            freshContainer.appendChild(dragSourceCard);
+            scaleFeedbackDiv.style.display = "none";
+        });
+        window.eventsContainer = freshContainer;
+    }
+
+    function resetAll() {
+        document.querySelectorAll("#slotsContainer .slot").forEach(slot => {
+            const card = slot.querySelector(".event-card");
+            if (card) card.remove();
+        });
+        const shuffled = shuffleArray([...eventsData]);
+        renderEventsList(shuffled);
+        scaleFeedbackDiv.style.display = "none";
+        setupSlotsDropTargets();
+        setupEventsContainerDrop();
+    }
+
+    function initGame() {
+        const shuffled = shuffleArray([...eventsData]);
+        renderEventsList(shuffled);
+        document.querySelectorAll("#slotsContainer .slot").forEach(slot => {
+            const card = slot.querySelector(".event-card");
+            if (card) card.remove();
+        });
+        scaleFeedbackDiv.style.display = "none";
+        setupSlotsDropTargets();
+        setupEventsContainerDrop();
+    }
+
+    checkBtn.addEventListener("click", validateAndShowFeedback);
+    resetBtn.addEventListener("click", resetAll);
+    initGame();
+</script>
+</body>
+</html>
