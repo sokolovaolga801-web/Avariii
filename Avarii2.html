@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Промбезопасность: шкала риска</title>
+    <title>Промбезопасность: шкала риска (исправленная версия)</title>
     <style>
         * {
             margin: 0;
@@ -201,6 +201,7 @@
 </div>
 
 <script>
+    // ---- ДАННЫЕ ----
     const eventsData = [
         { id: "asu", text: "Отказ АСУ ТП (перезагрузка компьютера)" },
         { id: "ppk", text: "Срабатывание ППК (предохранительный клапан)" },
@@ -209,14 +210,16 @@
     ];
     const correctOrderFromTop = ["asu", "ppk", "disk", "vessel"];
 
+    // ---- Глобальные переменные и DOM-узлы ----
     const eventsContainer = document.getElementById("eventsContainer");
     const slotsContainer = document.getElementById("slotsContainer");
     const checkBtn = document.getElementById("checkOrderBtn");
     const resetBtn = document.getElementById("resetAllBtn");
     const scaleFeedbackDiv = document.getElementById("scaleFeedback");
 
-    let dragSourceCard = null;
+    let dragSourceCard = null;  // элемент, который сейчас перетаскивают
 
+    // ---- Вспомогательные функции ----
     function shuffleArray(arr) {
         for (let i = arr.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -225,22 +228,37 @@
         return arr;
     }
 
+    // Создаёт карточку события с обработчиками drag
     function createEventCard(eventItem) {
         const card = document.createElement("div");
         card.className = "event-card";
         card.setAttribute("data-id", eventItem.id);
         card.setAttribute("draggable", "true");
         card.textContent = eventItem.text;
-        card.addEventListener("dragstart", handleDragStart);
-        card.addEventListener("dragend", handleDragEnd);
+
+        card.addEventListener("dragstart", (e) => {
+            dragSourceCard = card;
+            e.dataTransfer.setData("text/plain", card.getAttribute("data-id"));
+            card.classList.add("dragging");
+            e.dataTransfer.effectAllowed = "move";
+        });
+        card.addEventListener("dragend", () => {
+            if (dragSourceCard) dragSourceCard.classList.remove("dragging");
+            dragSourceCard = null;
+            // Убираем визуальный класс со всех слотов
+            document.querySelectorAll(".slot").forEach(slot => slot.classList.remove("drag-over"));
+        });
         return card;
     }
 
-    function renderEventsList(eventsArray) {
+    // Отрисовка списка событий (всегда перемешанный порядок)
+    function renderEventsList() {
         eventsContainer.innerHTML = "";
-        eventsArray.forEach(event => eventsContainer.appendChild(createEventCard(event)));
+        const shuffled = shuffleArray([...eventsData]);
+        shuffled.forEach(event => eventsContainer.appendChild(createEventCard(event)));
     }
 
+    // Получить порядок карточек в слотах (по data-id)
     function getCurrentOrderFromSlots() {
         const slots = document.querySelectorAll("#slotsContainer .slot");
         const order = [];
@@ -253,10 +271,13 @@
 
     function allSlotsFilled() {
         const slots = document.querySelectorAll("#slotsContainer .slot");
-        for (let slot of slots) if (!slot.querySelector(".event-card")) return false;
+        for (let slot of slots) {
+            if (!slot.querySelector(".event-card")) return false;
+        }
         return true;
     }
 
+    // Проверка порядка и отображение результата
     function validateAndShowFeedback() {
         if (!allSlotsFilled()) {
             scaleFeedbackDiv.style.display = "block";
@@ -267,7 +288,10 @@
         const currentOrder = getCurrentOrderFromSlots();
         let isCorrect = true;
         for (let i = 0; i < correctOrderFromTop.length; i++) {
-            if (currentOrder[i] !== correctOrderFromTop[i]) { isCorrect = false; break; }
+            if (currentOrder[i] !== correctOrderFromTop[i]) {
+                isCorrect = false;
+                break;
+            }
         }
         scaleFeedbackDiv.style.display = "block";
         if (isCorrect) {
@@ -281,96 +305,100 @@
         }
     }
 
+    // Переместить карточку sourceCard в целевой слот targetSlot
+    // Если слот занят — карточки меняются местами (со слотом или списком)
     function moveCardToSlot(sourceCard, targetSlot) {
         if (!sourceCard || !targetSlot) return;
+
         const existingCard = targetSlot.querySelector(".event-card");
         const sourceIsInSlot = sourceCard.parentNode !== eventsContainer && sourceCard.parentNode.classList?.contains("slot");
+
         if (!existingCard) {
+            // Слот пуст — просто кладём карточку
             targetSlot.appendChild(sourceCard);
         } else {
+            // Слот занят — меняем местами
             if (sourceIsInSlot) {
+                // Источник тоже в слоте → обмен карточками между слотами
                 const sourceSlot = sourceCard.parentNode;
                 sourceSlot.appendChild(existingCard);
             } else {
+                // Источник в списке событий → перемещаем существующую карточку обратно в список
                 eventsContainer.appendChild(existingCard);
             }
             targetSlot.appendChild(sourceCard);
         }
+        // Скрыть прошлый фидбек, т.к. порядок изменился
         scaleFeedbackDiv.style.display = "none";
     }
 
-    function handleDragStart(e) {
-        dragSourceCard = this;
-        e.dataTransfer.setData("text/plain", this.getAttribute("data-id"));
-        this.classList.add("dragging");
-        e.dataTransfer.effectAllowed = "move";
-    }
-    function handleDragEnd(e) {
-        if (dragSourceCard) dragSourceCard.classList.remove("dragging");
-        dragSourceCard = null;
-        document.querySelectorAll(".slot").forEach(slot => slot.classList.remove("drag-over"));
+    // ---- Настройка drag-and-drop через делегирование (без пересоздания DOM) ----
+    function setupGlobalDragAndDrop() {
+        // Слоты: принимаем перетаскивание
+        slotsContainer.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            // Подсветка слота, над которым находимся
+            const slot = e.target.closest(".slot");
+            if (slot) slot.classList.add("drag-over");
+        });
+
+        slotsContainer.addEventListener("dragleave", (e) => {
+            const slot = e.target.closest(".slot");
+            if (slot) slot.classList.remove("drag-over");
+        });
+
+        slotsContainer.addEventListener("drop", (e) => {
+            e.preventDefault();
+            const targetSlot = e.target.closest(".slot");
+            if (!targetSlot) return;
+            targetSlot.classList.remove("drag-over");
+
+            if (dragSourceCard && dragSourceCard.parentNode !== targetSlot) {
+                moveCardToSlot(dragSourceCard, targetSlot);
+            }
+        });
+
+        // Контейнер событий: позволяет вернуть карточку обратно
+        eventsContainer.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+        });
+        eventsContainer.addEventListener("drop", (e) => {
+            e.preventDefault();
+            if (dragSourceCard && dragSourceCard.parentNode !== eventsContainer) {
+                eventsContainer.appendChild(dragSourceCard);
+                scaleFeedbackDiv.style.display = "none";
+            }
+        });
     }
 
-    function setupSlotsDropTargets() {
+    // ---- Сброс ----
+    function resetAll() {
+        // Очищаем все слоты
         const slots = document.querySelectorAll("#slotsContainer .slot");
         slots.forEach(slot => {
-            const newSlot = slot.cloneNode(true);
-            slot.parentNode.replaceChild(newSlot, slot);
-        });
-        document.querySelectorAll("#slotsContainer .slot").forEach(slot => {
-            slot.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; slot.classList.add("drag-over"); });
-            slot.addEventListener("dragleave", () => slot.classList.remove("drag-over"));
-            slot.addEventListener("drop", e => {
-                e.preventDefault();
-                slot.classList.remove("drag-over");
-                if (!dragSourceCard || dragSourceCard.parentNode === slot) return;
-                moveCardToSlot(dragSourceCard, slot);
-            });
-        });
-    }
-
-    function setupEventsContainerDrop() {
-        const container = eventsContainer;
-        const newContainer = container.cloneNode(true);
-        container.parentNode.replaceChild(newContainer, container);
-        const freshContainer = document.getElementById("eventsContainer");
-        freshContainer.addEventListener("dragover", e => e.preventDefault());
-        freshContainer.addEventListener("drop", e => {
-            e.preventDefault();
-            if (!dragSourceCard || dragSourceCard.parentNode === freshContainer) return;
-            freshContainer.appendChild(dragSourceCard);
-            scaleFeedbackDiv.style.display = "none";
-        });
-        window.eventsContainer = freshContainer;
-    }
-
-    function resetAll() {
-        document.querySelectorAll("#slotsContainer .slot").forEach(slot => {
             const card = slot.querySelector(".event-card");
             if (card) card.remove();
         });
-        const shuffled = shuffleArray([...eventsData]);
-        renderEventsList(shuffled);
+        // Перерисовываем список событий (с перемешиванием)
+        renderEventsList();
+        // Сбрасываем глобальный dragSourceCard на всякий случай
+        dragSourceCard = null;
+        // Прячем фидбек
         scaleFeedbackDiv.style.display = "none";
-        setupSlotsDropTargets();
-        setupEventsContainerDrop();
     }
 
-    function initGame() {
-        const shuffled = shuffleArray([...eventsData]);
-        renderEventsList(shuffled);
-        document.querySelectorAll("#slotsContainer .slot").forEach(slot => {
-            const card = slot.querySelector(".event-card");
-            if (card) card.remove();
-        });
-        scaleFeedbackDiv.style.display = "none";
-        setupSlotsDropTargets();
-        setupEventsContainerDrop();
+    // ---- Инициализация приложения (вызывается 1 раз) ----
+    function init() {
+        renderEventsList();                // создаём карточки в списке
+        setupGlobalDragAndDrop();         // глобальные обработчики (один раз)
+        checkBtn.addEventListener("click", validateAndShowFeedback);
+        resetBtn.addEventListener("click", resetAll);
     }
 
-    checkBtn.addEventListener("click", validateAndShowFeedback);
-    resetBtn.addEventListener("click", resetAll);
-    initGame();
+    // Старт
+    init();
 </script>
 </body>
 </html>
