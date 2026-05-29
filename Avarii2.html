@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Промбезопасность: шкала риска (исправленная версия)</title>
+    <title>Промбезопасность: шкала риска</title>
     <style>
         * {
             margin: 0;
@@ -11,7 +11,7 @@
             box-sizing: border-box;
         }
         body {
-            background: #eef2f8;
+            background: white; /* белый фон */
             font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
             display: flex;
             justify-content: center;
@@ -104,10 +104,22 @@
             align-items: center;
             justify-content: center;
             padding: 0.2rem;
+            transition: all 0.1s ease;
         }
         .slot.drag-over {
             background: rgba(255, 235, 190, 0.9);
             border-color: #f7b05e;
+        }
+        /* Подсветка правильного/неправильного слота */
+        .slot.correct-slot {
+            background: #d4edda;
+            border-color: #28a745;
+            border-style: solid;
+        }
+        .slot.incorrect-slot {
+            background: #f8d7da;
+            border-color: #dc3545;
+            border-style: solid;
         }
         .slot .event-card {
             width: 100%;
@@ -150,18 +162,6 @@
             background: #f1f5f9;
             text-align: center;
         }
-        .nav-link {
-            display: inline-block;
-            margin-top: 1rem;
-            text-align: center;
-            width: 100%;
-            text-decoration: none;
-            color: #1e466e;
-            font-weight: 500;
-        }
-        hr {
-            margin: 1rem 0;
-        }
     </style>
 </head>
 <body>
@@ -180,10 +180,10 @@
             <div class="risk-scale">
                 <div class="scale-header">🟢 ИНЦИДЕНТЫ (менее серьёзно)</div>
                 <div id="slotsContainer" class="slots-container">
+                    <div class="slot" data-position="0"></div>
                     <div class="slot" data-position="1"></div>
                     <div class="slot" data-position="2"></div>
                     <div class="slot" data-position="3"></div>
-                    <div class="slot" data-position="4"></div>
                 </div>
                 <div class="scale-footer">🔴 АВАРИЯ (более серьёзно)</div>
             </div>
@@ -195,13 +195,9 @@
         <button id="resetAllBtn" class="btn btn-outline">⟳ Сбросить всё</button>
     </div>
     <div id="scaleFeedback" class="order-feedback" style="display: none;"></div>
-
-    <hr>
-    <a href="page1.html" class="nav-link">⬅️ Вернуться к кейсу К-202</a>
 </div>
 
 <script>
-    // ---- ДАННЫЕ ----
     const eventsData = [
         { id: "asu", text: "Отказ АСУ ТП (перезагрузка компьютера)" },
         { id: "ppk", text: "Срабатывание ППК (предохранительный клапан)" },
@@ -210,16 +206,14 @@
     ];
     const correctOrderFromTop = ["asu", "ppk", "disk", "vessel"];
 
-    // ---- Глобальные переменные и DOM-узлы ----
     const eventsContainer = document.getElementById("eventsContainer");
     const slotsContainer = document.getElementById("slotsContainer");
     const checkBtn = document.getElementById("checkOrderBtn");
     const resetBtn = document.getElementById("resetAllBtn");
     const scaleFeedbackDiv = document.getElementById("scaleFeedback");
 
-    let dragSourceCard = null;  // элемент, который сейчас перетаскивают
+    let dragSourceCard = null;
 
-    // ---- Вспомогательные функции ----
     function shuffleArray(arr) {
         for (let i = arr.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -228,7 +222,6 @@
         return arr;
     }
 
-    // Создаёт карточку события с обработчиками drag
     function createEventCard(eventItem) {
         const card = document.createElement("div");
         card.className = "event-card";
@@ -245,20 +238,17 @@
         card.addEventListener("dragend", () => {
             if (dragSourceCard) dragSourceCard.classList.remove("dragging");
             dragSourceCard = null;
-            // Убираем визуальный класс со всех слотов
             document.querySelectorAll(".slot").forEach(slot => slot.classList.remove("drag-over"));
         });
         return card;
     }
 
-    // Отрисовка списка событий (всегда перемешанный порядок)
     function renderEventsList() {
         eventsContainer.innerHTML = "";
         const shuffled = shuffleArray([...eventsData]);
         shuffled.forEach(event => eventsContainer.appendChild(createEventCard(event)));
     }
 
-    // Получить порядок карточек в слотах (по data-id)
     function getCurrentOrderFromSlots() {
         const slots = document.querySelectorAll("#slotsContainer .slot");
         const order = [];
@@ -277,12 +267,36 @@
         return true;
     }
 
-    // Проверка порядка и отображение результата
+    // Убрать подсветку со всех слотов
+    function clearSlotHighlight() {
+        const slots = document.querySelectorAll("#slotsContainer .slot");
+        slots.forEach(slot => {
+            slot.classList.remove("correct-slot", "incorrect-slot");
+        });
+    }
+
+    // Подсветить слоты согласно текущему порядку
+    function highlightSlots() {
+        clearSlotHighlight();
+        if (!allSlotsFilled()) return;
+        const currentOrder = getCurrentOrderFromSlots();
+        const slots = document.querySelectorAll("#slotsContainer .slot");
+        slots.forEach((slot, idx) => {
+            const cardId = currentOrder[idx];
+            if (cardId === correctOrderFromTop[idx]) {
+                slot.classList.add("correct-slot");
+            } else {
+                slot.classList.add("incorrect-slot");
+            }
+        });
+    }
+
     function validateAndShowFeedback() {
         if (!allSlotsFilled()) {
             scaleFeedbackDiv.style.display = "block";
             scaleFeedbackDiv.innerHTML = "⚠️ Шкала заполнена не полностью. Разместите все 4 карточки.";
             scaleFeedbackDiv.style.background = "#fff2e0";
+            clearSlotHighlight(); // убираем подсветку, если была
             return;
         }
         const currentOrder = getCurrentOrderFromSlots();
@@ -303,63 +317,50 @@
             scaleFeedbackDiv.style.background = "#ffebee";
             scaleFeedbackDiv.style.borderLeft = "4px solid #c62828";
         }
+        // Подсветим слоты (зелёным/красным)
+        highlightSlots();
     }
 
-    // Переместить карточку sourceCard в целевой слот targetSlot
-    // Если слот занят — карточки меняются местами (со слотом или списком)
     function moveCardToSlot(sourceCard, targetSlot) {
         if (!sourceCard || !targetSlot) return;
-
         const existingCard = targetSlot.querySelector(".event-card");
         const sourceIsInSlot = sourceCard.parentNode !== eventsContainer && sourceCard.parentNode.classList?.contains("slot");
-
         if (!existingCard) {
-            // Слот пуст — просто кладём карточку
             targetSlot.appendChild(sourceCard);
         } else {
-            // Слот занят — меняем местами
             if (sourceIsInSlot) {
-                // Источник тоже в слоте → обмен карточками между слотами
                 const sourceSlot = sourceCard.parentNode;
                 sourceSlot.appendChild(existingCard);
             } else {
-                // Источник в списке событий → перемещаем существующую карточку обратно в список
                 eventsContainer.appendChild(existingCard);
             }
             targetSlot.appendChild(sourceCard);
         }
-        // Скрыть прошлый фидбек, т.к. порядок изменился
+        // При любом перемещении сбрасываем подсветку и скрываем фидбек
+        clearSlotHighlight();
         scaleFeedbackDiv.style.display = "none";
     }
 
-    // ---- Настройка drag-and-drop через делегирование (без пересоздания DOM) ----
     function setupGlobalDragAndDrop() {
-        // Слоты: принимаем перетаскивание
         slotsContainer.addEventListener("dragover", (e) => {
             e.preventDefault();
             e.dataTransfer.dropEffect = "move";
-            // Подсветка слота, над которым находимся
             const slot = e.target.closest(".slot");
             if (slot) slot.classList.add("drag-over");
         });
-
         slotsContainer.addEventListener("dragleave", (e) => {
             const slot = e.target.closest(".slot");
             if (slot) slot.classList.remove("drag-over");
         });
-
         slotsContainer.addEventListener("drop", (e) => {
             e.preventDefault();
             const targetSlot = e.target.closest(".slot");
             if (!targetSlot) return;
             targetSlot.classList.remove("drag-over");
-
             if (dragSourceCard && dragSourceCard.parentNode !== targetSlot) {
                 moveCardToSlot(dragSourceCard, targetSlot);
             }
         });
-
-        // Контейнер событий: позволяет вернуть карточку обратно
         eventsContainer.addEventListener("dragover", (e) => {
             e.preventDefault();
             e.dataTransfer.dropEffect = "move";
@@ -368,36 +369,31 @@
             e.preventDefault();
             if (dragSourceCard && dragSourceCard.parentNode !== eventsContainer) {
                 eventsContainer.appendChild(dragSourceCard);
+                clearSlotHighlight();
                 scaleFeedbackDiv.style.display = "none";
             }
         });
     }
 
-    // ---- Сброс ----
     function resetAll() {
-        // Очищаем все слоты
         const slots = document.querySelectorAll("#slotsContainer .slot");
         slots.forEach(slot => {
             const card = slot.querySelector(".event-card");
             if (card) card.remove();
         });
-        // Перерисовываем список событий (с перемешиванием)
         renderEventsList();
-        // Сбрасываем глобальный dragSourceCard на всякий случай
         dragSourceCard = null;
-        // Прячем фидбек
+        clearSlotHighlight();
         scaleFeedbackDiv.style.display = "none";
     }
 
-    // ---- Инициализация приложения (вызывается 1 раз) ----
     function init() {
-        renderEventsList();                // создаём карточки в списке
-        setupGlobalDragAndDrop();         // глобальные обработчики (один раз)
+        renderEventsList();
+        setupGlobalDragAndDrop();
         checkBtn.addEventListener("click", validateAndShowFeedback);
         resetBtn.addEventListener("click", resetAll);
     }
 
-    // Старт
     init();
 </script>
 </body>
